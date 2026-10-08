@@ -1,0 +1,14 @@
+{
+  "eval_id": 2,
+  "eval_name": "security-config-scope",
+  "prompt": "before I tag v1.0 can you do a pre-release review focused on security and config only - don't need the perf stuff",
+  "assertions": [
+    "Gives an explicit overall verdict",
+    "Flags the missing authentication/authorization layer (no Spring Security)",
+    "Flags hibernate.orm.jdbc.bind=TRACE (or SQL parameter logging) as leaking personal/sensitive data into logs",
+    "Flags the default DB credential fallback (${DB_PASSWORD:admin} / admin) in application.properties",
+    "Flags Swagger UI / api-docs being exposed in prod (incl. try-it-out enabled)",
+    "Respects the scope: contains no N+1, query-performance or index findings",
+    "Gives findings with file:line locations"
+  ]
+}

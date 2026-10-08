@@ -1,0 +1,15 @@
+{
+  "eval_id": 1,
+  "eval_name": "full-audit",
+  "prompt": "we're planning to deploy this api to prod next week. is it ready? give me the list of what needs fixing first",
+  "assertions": [
+    "Gives an explicit overall verdict of not ready / not production-ready",
+    "Flags the missing authentication/authorization layer (no Spring Security) as a top-priority / blocker issue",
+    "Flags hibernate.orm.jdbc.bind=TRACE (or SQL parameter logging) as leaking personal/sensitive data into logs",
+    "Flags the default DB credential fallback (${DB_PASSWORD:admin} / admin) in application.properties",
+    "Flags that clients can set payment status (e.g. to COMPLETED) via a public endpoint as a business/security risk",
+    "Reports the outcome of actually running the test suite (./mvnw test) with pass/fail counts or a stated reason it could not run",
+    "Gives at least 5 findings with file:line locations",
+    "Contains no false positive claiming foreign-key columns are unindexed and does not recommend JOIN FETCH on PESSIMISTIC_WRITE lock queries"
+  ]
+}

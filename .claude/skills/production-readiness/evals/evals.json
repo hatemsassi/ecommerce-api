@@ -1,0 +1,36 @@
+{
+  "skill_name": "production-readiness",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "we're planning to deploy this api to prod next week. is it ready? give me the list of what needs fixing first",
+      "expected_output": "Severity-ranked report with a Not ready verdict, Blockers for missing auth, TRACE bind logging of PII, default DB credentials; build/test results; concrete fixes with file:line.",
+      "files": [],
+      "assertions": [
+        "Gives an explicit overall verdict of not ready / not production-ready",
+        "Flags the missing authentication/authorization layer (no Spring Security) as a top-priority / blocker issue",
+        "Flags hibernate.orm.jdbc.bind=TRACE (or SQL parameter logging) as leaking personal/sensitive data into logs",
+        "Flags the default DB credential fallback (${DB_PASSWORD:admin} / admin) in application.properties",
+        "Flags that clients can set payment status (e.g. to COMPLETED) via a public endpoint as a business/security risk",
+        "Reports the outcome of actually running the test suite (./mvnw test) with pass/fail counts or a stated reason it could not run",
+        "Gives at least 5 findings with file:line locations",
+        "Contains no false positive claiming foreign-key columns are unindexed and does not recommend JOIN FETCH on PESSIMISTIC_WRITE lock queries"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "before I tag v1.0 can you do a pre-release review focused on security and config only - don't need the perf stuff",
+      "expected_output": "Report limited to security/config/secrets/exposure findings, with verdict and file:line locations; no N+1 or index findings.",
+      "files": [],
+      "assertions": [
+        "Gives an explicit overall verdict",
+        "Flags the missing authentication/authorization layer (no Spring Security)",
+        "Flags hibernate.orm.jdbc.bind=TRACE (or SQL parameter logging) as leaking personal/sensitive data into logs",
+        "Flags the default DB credential fallback (${DB_PASSWORD:admin} / admin) in application.properties",
+        "Flags Swagger UI / api-docs being exposed in prod (incl. try-it-out enabled)",
+        "Respects the scope: contains no N+1, query-performance or index findings",
+        "Gives findings with file:line locations"
+      ]
+    }
+  ]
+}
