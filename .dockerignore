@@ -1,0 +1,15 @@
+target/
+.git/
+.idea/
+.vscode/
+.claude/
+.playwright-mcp/
+*.iml
+*.log
+logs/
+.env
+.env.*
+application-local.*
+mysql-data/
+Dockerfile
+.dockerignore
