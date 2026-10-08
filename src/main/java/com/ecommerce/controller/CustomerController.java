@@ -5,6 +5,7 @@ import com.ecommerce.dto.CustomerResponse;
 import com.ecommerce.service.CustomerService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
@@ -27,7 +28,7 @@ public class CustomerController {
 	private final CustomerService customerService;
 
 	@GetMapping
-	public Page<CustomerResponse> findAll(@PageableDefault(size = 20, sort = "id") Pageable pageable) {
+	public Page<CustomerResponse> findAll(@ParameterObject @PageableDefault(size = 20, sort = "id") Pageable pageable) {
 		return customerService.findAll(pageable);
 	}
 

@@ -8,6 +8,7 @@ import com.ecommerce.entity.enums.OrderStatus;
 import com.ecommerce.service.OrderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -33,7 +34,7 @@ public class OrderController {
 	@GetMapping
 	public Page<OrderResponse> findAll(@RequestParam(required = false) Long customerId,
 			@RequestParam(required = false) OrderStatus status,
-			@PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+			@ParameterObject @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
 		return orderService.findAll(customerId, status, pageable);
 	}
 
