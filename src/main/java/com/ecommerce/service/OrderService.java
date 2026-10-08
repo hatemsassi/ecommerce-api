@@ -15,6 +15,7 @@ import com.ecommerce.exception.ResourceNotFoundException;
 import com.ecommerce.repository.OrderRepository;
 import com.ecommerce.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,6 +25,7 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -34,10 +36,13 @@ import static com.ecommerce.entity.enums.OrderStatus.PENDING;
 import static com.ecommerce.entity.enums.OrderStatus.PROCESSING;
 import static com.ecommerce.entity.enums.OrderStatus.SHIPPED;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class OrderService {
+
+	private static final int LOW_STOCK_THRESHOLD = 10;
 
 	// One-way transitions; statuses not listed as keys (DELIVERED, CANCELLED, REFUNDED) are final.
 	private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = new EnumMap<>(Map.of(
@@ -91,6 +96,8 @@ public class OrderService {
 				.build();
 
 		BigDecimal total = BigDecimal.ZERO;
+		// A product listed twice is the same managed instance, so the set holds it once.
+		Set<Product> orderedProducts = new LinkedHashSet<>();
 		// Lock products in id order so two orders sharing products can't deadlock.
 		for (OrderItemRequest itemRequest : request.getItems().stream()
 				.sorted(Comparator.comparing(OrderItemRequest::getProductId)).toList()) {
@@ -107,6 +114,7 @@ public class OrderService {
 
 			// Stock is reserved when the order is placed, not at shipment.
 			product.setStockQuantity(product.getStockQuantity() - quantity);
+			orderedProducts.add(product);
 
 			OrderItem item = OrderItem.builder()
 					.product(product)
@@ -122,7 +130,9 @@ public class OrderService {
 				.amount(total)
 				.build());
 
-		return OrderResponse.from(orderRepository.save(order));
+		OrderResponse response = OrderResponse.from(orderRepository.save(order));
+		warnLowStock(orderedProducts);
+		return response;
 	}
 
 	@Transactional
@@ -165,6 +175,14 @@ public class OrderService {
 		}
 		payment.setPaymentStatus(newStatus);
 		return OrderResponse.from(order);
+	}
+
+	// Warning only: a low remaining stock never blocks the order.
+	private void warnLowStock(Set<Product> products) {
+		products.stream()
+				.filter(product -> product.getStockQuantity() < LOW_STOCK_THRESHOLD)
+				.forEach(product -> log.warn("Low stock alert: {} has {} units left",
+						product.getName(), product.getStockQuantity()));
 	}
 
 	// Atomic "stock = stock + n" updates, in product id order to avoid deadlocks with concurrent orders.

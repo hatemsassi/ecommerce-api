@@ -72,7 +72,7 @@ public class ProductService {
 		getProduct(id).setActive(false);
 	}
 
-	private Product getProduct(Long id) {
+	Product getProduct(Long id) {
 		return productRepository.findById(id)
 				.orElseThrow(() -> new ResourceNotFoundException("Product", "id", id));
 	}

@@ -21,6 +21,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -39,7 +41,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith({MockitoExtension.class, OutputCaptureExtension.class})
 class OrderServiceTest {
 
 	private static final Pageable PAGEABLE = PageRequest.of(0, 20);
@@ -223,6 +225,69 @@ class OrderServiceTest {
 
 		// Assert
 		assertThat(result.getShippingAddress()).isEqualTo("9 Other Rd");
+	}
+
+	@Test
+	void should_logLowStockWarning_when_remainingStockBelowThreshold(CapturedOutput output) {
+		// Arrange
+		Product book = product(10L, "SKU-BOOK", "10.00", 12);
+		Product pen = product(11L, "SKU-PEN", "2.50", 20);
+		when(customerService.getCustomer(1L)).thenReturn(customer);
+		when(productRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(book));
+		when(productRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(pen));
+		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		// Act
+		orderService.placeOrder(orderRequest(List.of(item(10L, 5), item(11L, 4)), null));
+
+		// Assert
+		assertThat(output).contains("Low stock alert: Product SKU-BOOK has 7 units left");
+		assertThat(output).doesNotContain("Low stock alert: Product SKU-PEN");
+	}
+
+	@Test
+	void should_notLogLowStockWarning_when_remainingStockEqualsThreshold(CapturedOutput output) {
+		// Arrange
+		when(customerService.getCustomer(1L)).thenReturn(customer);
+		when(productRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(product(10L, "SKU-BOOK", "10.00", 15)));
+		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		// Act
+		orderService.placeOrder(orderRequest(List.of(item(10L, 5)), null));
+
+		// Assert
+		assertThat(output).doesNotContain("Low stock alert");
+	}
+
+	@Test
+	void should_logLowStockWarningOnce_when_sameProductOrderedTwice(CapturedOutput output) {
+		// Arrange
+		when(customerService.getCustomer(1L)).thenReturn(customer);
+		when(productRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(product(10L, "SKU-BOOK", "10.00", 12)));
+		when(orderRepository.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+		// Act
+		orderService.placeOrder(orderRequest(List.of(item(10L, 2), item(10L, 3)), null));
+
+		// Assert
+		assertThat(output.getOut().split("Low stock alert", -1)).hasSize(2);
+		assertThat(output).contains("Low stock alert: Product SKU-BOOK has 7 units left");
+	}
+
+	@Test
+	void should_notLogLowStockWarning_when_orderFails(CapturedOutput output) {
+		// Arrange
+		Product book = product(10L, "SKU-BOOK", "10.00", 12);
+		when(customerService.getCustomer(1L)).thenReturn(customer);
+		when(productRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(book));
+		when(productRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(product(11L, "SKU-PEN", "2.50", 1)));
+
+		// Act
+		assertThatThrownBy(() -> orderService.placeOrder(orderRequest(List.of(item(10L, 5), item(11L, 2)), null)))
+				.isInstanceOf(BusinessRuleException.class);
+
+		// Assert
+		assertThat(output).doesNotContain("Low stock alert");
 	}
 
 	// --- updateStatus / cancel ---
